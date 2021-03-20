@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from graphConv import GraphConvolution
 
 class Embedding(nn.Module):
     def __init__(self, in_channels, N_freqs, logscale=True):
@@ -69,6 +70,8 @@ class NeRF(nn.Module):
             setattr(self, f"xyz_encoding_{i+1}", layer)
         self.xyz_encoding_final = nn.Linear(W, W)
 
+        self.gcn = GraphConvolution(W, W)
+
         # direction encoding layers
         self.dir_encoding = nn.Sequential(
                                 nn.Linear(W+in_channels_dir, W//2),
@@ -80,7 +83,7 @@ class NeRF(nn.Module):
                         nn.Linear(W//2, 3),
                         nn.Sigmoid())
 
-    def forward(self, x, sigma_only=False):
+    def forward(self, x, adj, sigma_only=False):
         """
         Encodes input (xyz+dir) to rgb+sigma (not ready to render yet).
         For rendering this ray, please see rendering.py
@@ -88,6 +91,7 @@ class NeRF(nn.Module):
         Inputs:
             x: (B, self.in_channels_xyz(+self.in_channels_dir))
                the embedded vector of position and direction
+            adj: (n, n) is the adjacency matrix about the nodes.
             sigma_only: whether to infer sigma only. If True,
                         x is of shape (B, self.in_channels_xyz)
 
@@ -113,7 +117,9 @@ class NeRF(nn.Module):
         if sigma_only:
             return sigma
 
-        xyz_encoding_final = self.xyz_encoding_final(xyz_)
+        xyz_encoding = self.xyz_encoding_final(xyz_)
+        ## changes, xyz_encoding : torch.Size([32768, 256])
+        xyz_encoding_final = self.gcn(xyz_encoding, adj)
 
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir], -1)
         dir_encoding = self.dir_encoding(dir_encoding_input)

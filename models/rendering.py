@@ -1,5 +1,6 @@
 import torch
 from torchsearchsorted import searchsorted
+import graphConv
 
 __all__ = ['render_rays']
 
@@ -115,12 +116,23 @@ def render_rays(models,
         N_samples_ = xyz_.shape[1]
         # Embed directions
         xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
+
+        ## xyz_.shape torch.Size([131072, 3]) 131072=2048*64, total has 131072 points
+        ## using xyz_, generate the adj matrix.
+
+        ### ?? prob: due to chunk, it will cause it cannot create all features for every nodes.
+        adj = graphConv.design_adj_matrix(xyz_)
+		
+		### ?? prob: due to val dataset don't have batch size, it will have 32768*64=2,097,152 points.
+
         if not weights_only:
             dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
                            # (N_rays*N_samples_, embed_dir_channels)
 
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
+        ## establish the Graph for xyz_.
+		
         out_chunks = []
         for i in range(0, B, chunk):
             # Embed positions by chunk
@@ -130,7 +142,7 @@ def render_rays(models,
                                              dir_embedded[i:i+chunk]], 1)
             else:
                 xyzdir_embedded = xyz_embedded
-            out_chunks += [model(xyzdir_embedded, sigma_only=weights_only)]
+            out_chunks += [model(xyzdir_embedded, adj, sigma_only=weights_only)]
 
         out = torch.cat(out_chunks, 0)
         if weights_only:
@@ -206,6 +218,7 @@ def render_rays(models,
     xyz_coarse_sampled = rays_o.unsqueeze(1) + \
                          rays_d.unsqueeze(1) * z_vals.unsqueeze(2) # (N_rays, N_samples, 3)
 
+    ### in training : xyz_coarse_sampled torch.Size([2048, 64, 3])
     if test_time:
         weights_coarse = \
             inference(model_coarse, embedding_xyz, xyz_coarse_sampled, rays_d,
