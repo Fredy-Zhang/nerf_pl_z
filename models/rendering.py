@@ -123,7 +123,7 @@ def render_rays(models,
         ### ?? prob: due to chunk, it will cause it cannot create all features for every nodes.
         adj = graphConv.design_adj_matrix(xyz_)
 		
-		### ?? prob: due to val dataset don't have batch size, it will have 32768*64=2,097,152 points.
+        ### ?? prob: due to val dataset don't have batch size, it will have 32768*64=2,097,152 points.
 
         if not weights_only:
             dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
