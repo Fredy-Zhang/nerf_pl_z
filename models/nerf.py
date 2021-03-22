@@ -122,6 +122,7 @@ class NeRF(nn.Module):
         ## changes, xyz_encoding : torch.Size([32768, 256])
         xyz_encoding_final = F.relu(self.gcn(xyz_encoding, adj))
 
+        ### <<<< need changes.
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir], -1)
         dir_encoding = self.dir_encoding(dir_encoding_input)
         rgb = self.rgb(dir_encoding)

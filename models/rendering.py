@@ -89,7 +89,7 @@ def render_rays(models,
         result: dictionary containing final rgb and depth maps for coarse and fine models
     """
 
-    def inference(model, embedding_xyz, xyz_, dir_, dir_embedded, z_vals, weights_only=False):
+    def inference(model, embedding_xyz, xyz_, dir_, dir_embedded, z_vals, adj, weights_only=False):
         """
         Helper function that performs model inference.
 
@@ -103,6 +103,7 @@ def render_rays(models,
             dir_: (N_rays, 3) ray directions
             dir_embedded: (N_rays, embed_dir_channels) embedded directions
             z_vals: (N_rays, N_samples_) depths of the sampled positions
+            adj: the adj matrix for rays_o, build the graph for these points.
             weights_only: do inference on sigma only or not
 
         Outputs:
@@ -117,13 +118,8 @@ def render_rays(models,
         # Embed directions
         xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
 
-        ## xyz_.shape torch.Size([131072, 3]) 131072=2048*64, total has 131072 points
-        ## using xyz_, generate the adj matrix.
-
-        ### ?? prob: due to chunk, it will cause it cannot create all features for every nodes.
-        adj = design_adj_matrix(xyz_, 1.0)
-		
-        ### ?? prob: due to val dataset don't have batch size, it will have 32768*64=2,097,152 points.
+        # sorted the points based on depth values, put same depth values as one chunk or batch.
+        
 
         if not weights_only:
             dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
@@ -131,8 +127,7 @@ def render_rays(models,
 
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
-        ## establish the Graph for xyz_.
-		
+
         out_chunks = []
         for i in range(0, B, chunk):
             # Embed positions by chunk
@@ -194,6 +189,9 @@ def render_rays(models,
     rays_o, rays_d = rays[:, 0:3], rays[:, 3:6] # both (N_rays, 3)
     near, far = rays[:, 6:7], rays[:, 7:8] # both (N_rays, 1)
 
+    adj = design_adj_matrix(rays_o, 1.0)  # the threshold need to optimize.
+    co_adj = adj_normalized(adj)  ## fixed
+
     # Embed direction
     dir_embedded = embedding_dir(rays_d) # (N_rays, embed_dir_channels)
 
@@ -222,12 +220,12 @@ def render_rays(models,
     if test_time:
         weights_coarse = \
             inference(model_coarse, embedding_xyz, xyz_coarse_sampled, rays_d,
-                      dir_embedded, z_vals, weights_only=True)
+                      dir_embedded, z_vals, co_adj, weights_only=True)
         result = {'opacity_coarse': weights_coarse.sum(1)}
     else:
         rgb_coarse, depth_coarse, weights_coarse = \
             inference(model_coarse, embedding_xyz, xyz_coarse_sampled, rays_d,
-                      dir_embedded, z_vals, weights_only=False)
+                      dir_embedded, z_vals, co_adj, weights_only=False)
         result = {'rgb_coarse': rgb_coarse,
                   'depth_coarse': depth_coarse,
                   'opacity_coarse': weights_coarse.sum(1)
@@ -248,7 +246,7 @@ def render_rays(models,
         model_fine = models[1]
         rgb_fine, depth_fine, weights_fine = \
             inference(model_fine, embedding_xyz, xyz_fine_sampled, rays_d,
-                      dir_embedded, z_vals, weights_only=False)
+                      dir_embedded, z_vals, co_adj, weights_only=False)
 
         result['rgb_fine'] = rgb_fine
         result['depth_fine'] = depth_fine

@@ -40,6 +40,7 @@ class GraphConvolution(Module):
 
     def forward(self, input, adj):
         support = torch.mm(input, self.weight)
+        ### if the adj matrix is small, it can use the mm directly.
         output = torch.spmm(adj, support)
         if self.bias is not None:
             return output + self.bias
@@ -51,18 +52,35 @@ class GraphConvolution(Module):
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
 
-def design_adj_matrix(xyz_, threshold):
+def design_adj_matrix(rays_o, threshold):
     """
-    input: xyz_ : 3D coordinators. n-dimension
+    input: rays_o : 3D coordinators. N_rays,
+                    Actually, it only 2D. Z is fixed.
 
     Output:
-       return : adjacency matrix (n,n)
+       return : adjacency matrix (N_rays, N_rays)
     """
-    dim = xyz_.shape[0]
+    dim = rays_o.shape[0]
+    # create the sparse adj matrix
+
     y = torch.zeros(dim, dim).cuda()
     x = torch.ones(dim, dim).cuda()
-    # generate the distance matrix, (dim, dim), a little large
-    return torch.where(torch.cdist(xyz_, xyz_, p=2) > threshold, x, y)
+
+    # generate the distance matrix, (dim, dim), return A + I
+    return torch.where(torch.cdist(rays_o, rays_o, p=2) > threshold, x, y) + torch.eye(dim)
+
+def adj_normalized(adj):
+    """
+    Input: adj: adj matrix with (N_rays, N_rays), A+I
+
+      Avoid the information focus on some nodes which have too many neighbors. So do normalized operation.
+      degree_matrix^(-1/2) * A * degree_matrix^(-1/2), degree_ii = sum_j(Aij)
+
+    Output:
+       co-adj: (N_rays, N_rays)
+    """
+    degree = torch.diag(torch.sum(adj, 1))  # return the degree of every nodes
+    return (degree ** (-1/2)) @ adj @ (degree ** (-1/2))  # return the adj, after normalized.
 
 ## if we assume, all points all can be considered as centeroids, this step can be ignored.
 def farthest_point_sample(xyz, npoint):
