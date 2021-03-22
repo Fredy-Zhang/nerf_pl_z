@@ -1,6 +1,6 @@
 import torch
 from torchsearchsorted import searchsorted
-import graphConv
+from models.graphConv import design_adj_matrix
 
 __all__ = ['render_rays']
 
@@ -121,7 +121,7 @@ def render_rays(models,
         ## using xyz_, generate the adj matrix.
 
         ### ?? prob: due to chunk, it will cause it cannot create all features for every nodes.
-        adj = graphConv.design_adj_matrix(xyz_, 1.0)
+        adj = design_adj_matrix(xyz_, 1.0)
 		
         ### ?? prob: due to val dataset don't have batch size, it will have 32768*64=2,097,152 points.
 

@@ -1,6 +1,7 @@
 import torch
 from torch import nn
-from graphConv import GraphConvolution
+from models.graphConv import GraphConvolution
+import torch.nn.functional as F
 
 class Embedding(nn.Module):
     def __init__(self, in_channels, N_freqs, logscale=True):
@@ -119,7 +120,7 @@ class NeRF(nn.Module):
 
         xyz_encoding = self.xyz_encoding_final(xyz_)
         ## changes, xyz_encoding : torch.Size([32768, 256])
-        xyz_encoding_final = self.gcn(xyz_encoding, adj)
+        xyz_encoding_final = F.relu(self.gcn(xyz_encoding, adj))
 
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir], -1)
         dir_encoding = self.dir_encoding(dir_encoding_input)
