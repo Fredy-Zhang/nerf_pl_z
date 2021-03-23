@@ -116,34 +116,50 @@ def render_rays(models,
         """
         N_samples_ = xyz_.shape[1]
         # Embed directions
-        xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
+        # --> xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
 
         # sorted the points based on depth values, put same depth values as one chunk or batch.
-        
+        # choose [N_rays, N_samples, 3], [N_rays, i, 3] as one chunk, it means that total N_rays points input at the
+        #    same time. After finish, rebuild the shape.
 
         if not weights_only:
             dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
                            # (N_rays*N_samples_, embed_dir_channels)
+            dir_embedded = dir_embedded.view(N_rays, N_samples_, 27)
 
         # Perform model inference to get rgb and raw sigma
-        B = xyz_.shape[0]
+        # --> B = xyz_.shape[0]
 
         out_chunks = []
-        for i in range(0, B, chunk):
+        for i in range(0, N_samples):
             # Embed positions by chunk
-            xyz_embedded = embedding_xyz(xyz_[i:i+chunk])
+
+            ### get the values in same samples, it means they got similar depth values. do graph attention.
+
+            xyz_embedded = embedding_xyz(xyz_[:, i, :]) # N_rays, 63
             if not weights_only:
                 xyzdir_embedded = torch.cat([xyz_embedded,
-                                             dir_embedded[i:i+chunk]], 1)
+                                             dir_embedded[:, i, :]], 1) # N_rays, 27
             else:
                 xyzdir_embedded = xyz_embedded
             out_chunks += [model(xyzdir_embedded, adj, sigma_only=weights_only)]
+        # Before, [[chunk_0, 4], [chunk_1, 4], [chunk_2, 4]....] --> [[rays_0, 4],[rays_1, 4]....]
+        #  the out information, is based on the depth values, reshape the ranges.
+        #  [[4] N_rays, sample_0
+        #   [4] N_rays, sample_1
+        #   [4] N_rays, sample_2
+        #   [4]]N_rays, sample_3 ....
+        # Current, every column as one ray. 1024, 1024, ... 1024, total 64.
+        # 0, 1023, 1023+1024, 1023
+        #out_chunks_rearrange = [ for i in range(0, N_samples) if i % N_rays == 0]
 
         out = torch.cat(out_chunks, 0)
         if weights_only:
-            sigmas = out.view(N_rays, N_samples_)
+            # sigmas = out.view(N_rays, N_samples_)
+            sigmas = out.view(N_samples_, N_rays).permute(1,0)
         else:
-            rgbsigma = out.view(N_rays, N_samples_, 4)
+            #rgbsigma = out.view(N_rays, N_samples_, 4)
+            rgbsigma = out.view(N_samples_, N_rays, 4).permute(1,0,2)
             rgbs = rgbsigma[..., :3] # (N_rays, N_samples_, 3)
             sigmas = rgbsigma[..., 3] # (N_rays, N_samples_)
 
