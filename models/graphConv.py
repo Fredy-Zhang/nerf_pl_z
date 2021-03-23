@@ -41,7 +41,8 @@ class GraphConvolution(Module):
     def forward(self, input, adj):
         support = torch.mm(input, self.weight)
         ### if the adj matrix is small, it can use the mm directly.
-        output = torch.spmm(adj, support)
+        # output = torch.spmm(adj, support)
+        output = torch.mm(adj, support)
         if self.bias is not None:
             return output + self.bias
         else:
