@@ -1,6 +1,6 @@
 import torch
 from torchsearchsorted import searchsorted
-from models.graphConv import design_adj_matrix
+from models.graphConv import design_adj_matrix, adj_normalized
 
 __all__ = ['render_rays']
 
@@ -115,6 +115,7 @@ def render_rays(models,
                 weights: (N_rays, N_samples_): weights of each sample
         """
         N_samples_ = xyz_.shape[1]
+        N_rays = xyz_.shape[0]
         # Embed directions
         # --> xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
 
@@ -131,7 +132,7 @@ def render_rays(models,
         # --> B = xyz_.shape[0]
 
         out_chunks = []
-        for i in range(0, N_samples):
+        for i in range(0, N_samples_):
             # Embed positions by chunk
 
             ### get the values in same samples, it means they got similar depth values. do graph attention.
@@ -158,7 +159,7 @@ def render_rays(models,
             # sigmas = out.view(N_rays, N_samples_)
             sigmas = out.view(N_samples_, N_rays).permute(1,0)
         else:
-            #rgbsigma = out.view(N_rays, N_samples_, 4)
+            # rgbsigma = out.view(N_rays, N_samples_, 4)
             rgbsigma = out.view(N_samples_, N_rays, 4).permute(1,0,2)
             rgbs = rgbsigma[..., :3] # (N_rays, N_samples_, 3)
             sigmas = rgbsigma[..., 3] # (N_rays, N_samples_)
