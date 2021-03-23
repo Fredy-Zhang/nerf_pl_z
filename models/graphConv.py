@@ -79,8 +79,8 @@ def adj_normalized(adj):
     Output:
        co-adj: (N_rays, N_rays)
     """
-    degree = torch.diag(torch.sum(adj, 1))  # return the degree of every nodes
-    return (degree ** (-1/2)) @ adj @ (degree ** (-1/2))  # return the adj, after normalized.
+    degree = torch.diag(torch.sum(adj, 1) ** (-1/2))  # return the degree of every nodes
+    return degree @ adj @ degree  # return the adj, after normalized.
 
 ## if we assume, all points all can be considered as centeroids, this step can be ignored.
 def farthest_point_sample(xyz, npoint):
