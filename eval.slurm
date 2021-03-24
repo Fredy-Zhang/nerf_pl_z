@@ -54,7 +54,7 @@ echo "Starting the process--------------------------------------"
 #   --chunk 2048
 
 python eval.py \
-   --root_dir "../../dataset/nerf_llff_data/fern" \
+   --root_dir "../../../../dataset/nerf_llff_data/fern" \
    --dataset_name llff \
    --scene_name "fern_case0" \
    --img_wh "504" "378" \

@@ -44,7 +44,7 @@ echo "Starting the process--------------------------------------"
 
 python train.py \
    --dataset_name llff \
-   --root_dir "../../dataset/nerf_llff_data/fern" \
+   --root_dir "../../../../dataset/nerf_llff_data/fern" \
    --N_importance 64 --img_wh "504" "378" \
    --num_epochs "10" --batch_size 1024 \
    --optimizer adam --lr 5e-4 \
