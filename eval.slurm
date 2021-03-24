@@ -11,7 +11,7 @@
 #   Config the Slurm                                #
 #   Set partition, cpu, GPU....                     #
 #---------------------------------------------------#
-#SBATCH --job-name="gpu_nerf_case0"
+#SBATCH --job-name="gpu_nerf_case0_eval"
 #SBATCH --partition=gpgpu
 #SBATCH -q gpgpuresplat
 #SBATCH --nodes=1                   # set the node number
@@ -42,15 +42,26 @@ source activate nerf_pl
 #---------------------------------------------------#
 echo "Starting the process--------------------------------------"
 
-python train.py \
-   --dataset_name llff \
+#python eval.py \
+#   --root_dir "../../dataset/nerf_llff_data/fern" \
+#   --dataset_name llff \
+#   --scene_name "fern_1" \
+#   --img_wh "504" "378" \
+#   --N_importance 64 \
+#   --ckpt_path "./ckpts/fern_64_relu/epoch=8.ckpt" \
+#   --split "test" \
+#   --N_samples 64 \
+#   --chunk 2048
+
+python eval.py \
    --root_dir "../../dataset/nerf_llff_data/fern" \
-   --N_importance 64 --img_wh "504" "378" \
-   --num_epochs "10" --batch_size 1024 \
-   --optimizer adam --lr 5e-4 \
-   --lr_scheduler cosine \
-   --exp_name "fern_case0" \
-   --num_gpus 4 \
+   --dataset_name llff \
+   --scene_name "fern_case0" \
+   --img_wh "504" "378" \
+   --N_importance 64 \
+   --ckpt_path "./ckpts/fern_case0/epoch=29.ckpt" \
+   --split "test" \
+   --N_samples 64 \
    --chunk 2048
 
 echo "Finishing the training-------------------------------------"
