@@ -62,7 +62,8 @@ def batched_inference(models, embeddings,
                       white_back):
     """Do batched inference on rays using chunk."""
     B = rays.shape[0]
-    chunk = 1024*32
+    #chunk = 1024*32
+    chunk = chunk
     results = defaultdict(list)
     for i in range(0, B, chunk):
         rendered_ray_chunks = \

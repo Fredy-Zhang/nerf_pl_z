@@ -11,6 +11,7 @@
 import math
 
 import torch
+import logging
 
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
@@ -67,8 +68,10 @@ def design_adj_matrix(rays_o, threshold):
     y = torch.zeros(dim, dim).cuda()
     x = torch.ones(dim, dim).cuda()
 
-    # generate the distance matrix, (dim, dim), return A + I
-    return torch.where(torch.cdist(rays_o, rays_o, p=2) > threshold, x, y) + torch.eye(dim)
+    # generate the distance matrix, (dim, dim), return A + I it's a bug.
+    adj = torch.where(torch.cdist(rays_o, rays_o, p=2) <= threshold, x, y) + torch.eye(dim)
+    logging.info(sum(adj,1))
+    return adj
 
 def adj_normalized(adj):
     """
