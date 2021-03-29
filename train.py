@@ -54,11 +54,14 @@ class NeRFSystem(LightningModule):
         _FLAG = B == (self.hparams.img_wh[0] * self.hparams.img_wh[1])
         if _FLAG:
             # val part only val B will reach width * height.
-            _index = np.arange(B, dtype=np.uint32)
+            _index = np.arange(B, dtype=np.int32)
             np.random.shuffle(_index)
         for i in range(0, B, self.hparams.chunk):
             if _FLAG:
-                _rays = rays[_index[i:i+self.hparams.chunk]]
+                if i+self.hparams.chunk > B:
+                    _rays = rays[_index[i:B]]
+                else:
+                    _rays = rays[_index[i:i+self.hparams.chunk]]
             else:
                 _rays = rays[i:i+self.hparams.chunk]
             rendered_ray_chunks = \
@@ -77,7 +80,7 @@ class NeRFSystem(LightningModule):
                 results[k] += [v]
         if _FLAG:
             _results = defaultdict(list)
-            for idx in np.arange(B, dtype=np.uint32): ## 0-504*378-1
+            for idx in np.arange(B, dtype=np.int32): ## 0-504*378-1
                 for key in results.keys():
                     _results[key] += results[key][_index.index(idx)]
             results = _results
