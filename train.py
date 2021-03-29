@@ -78,14 +78,14 @@ class NeRFSystem(LightningModule):
 
             for k, v in rendered_ray_chunks.items():
                 results[k] += [v]
-        if _FLAG:
-            _results = defaultdict(list)
-            for idx in np.arange(B, dtype=np.int32): ## 0-504*378-1
-                for key in results.keys():
-                    _results[key] += results[key][_index.index(idx)]
-            results = _results
+        _results = defaultdict(list)
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
+        if _FLAG:
+            for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
+                for k in results.keys():
+                    _results[k] += results[k][list(_index).index(idx)]
+            results = _results
         return results
 
     def prepare_data(self):
