@@ -59,17 +59,30 @@ def get_opts():
 def batched_inference(models, embeddings,
                       rays, N_samples, N_importance, use_disp,
                       chunk,
-                      white_back):
+                      white_back, w, h):
     """Do batched inference on rays using chunk."""
     B = rays.shape[0]
     #chunk = 1024*32
     chunk = chunk
     results = defaultdict(list)
+    index = None
+    _FLAG = B == (w * h)
+    if _FLAG:
+        # val part only val B will reach width * height.
+        _index = np.arange(B, dtype=np.int32)
+        np.random.shuffle(_index)
     for i in range(0, B, chunk):
+        if _FLAG:
+            if i + chunk > B:
+                _rays = rays[_index[i:B]]
+            else:
+                _rays = rays[_index[i:i + chunk]]
+        else:
+            _rays = rays[i:i + chunk]
         rendered_ray_chunks = \
             render_rays(models,
                         embeddings,
-                        rays[i:i+chunk],
+                        _rays,
                         N_samples,
                         use_disp,
                         0,
@@ -82,8 +95,14 @@ def batched_inference(models, embeddings,
         for k, v in rendered_ray_chunks.items():
             results[k] += [v]
 
+    _results = defaultdict(list)
     for k, v in results.items():
         results[k] = torch.cat(v, 0)
+    if _FLAG:
+        for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
+            for k in results.keys():
+                _results[k] += results[k][list(_index).index(idx)]
+        results = _results
     return results
 
 
@@ -123,7 +142,7 @@ if __name__ == "__main__":
         results = batched_inference(models, embeddings, rays,
                                     args.N_samples, args.N_importance, args.use_disp,
                                     args.chunk,
-                                    dataset.white_back)
+                                    dataset.white_back, w, h)
 
         img_pred = results['rgb_fine'].view(h, w, 3).cpu().numpy()
         
