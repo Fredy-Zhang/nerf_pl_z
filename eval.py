@@ -100,6 +100,8 @@ if __name__ == "__main__":
 
     embedding_xyz = Embedding(3, 10)
     embedding_dir = Embedding(3, 4)
+
+    ## for eval only use fine model to train.
     nerf_coarse = NeRF()
     nerf_fine = NeRF()
     load_ckpt(nerf_coarse, args.ckpt_path, model_name='nerf_coarse')

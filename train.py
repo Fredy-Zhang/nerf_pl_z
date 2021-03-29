@@ -50,11 +50,21 @@ class NeRFSystem(LightningModule):
         """Do batched inference on rays using chunk."""
         B = rays.shape[0]
         results = defaultdict(list)
+        index = None
+        _FLAG = B == (self.hparams.img_wh[0] * self.hparams.img_wh[1])
+        if _FLAG:
+            # val part only val B will reach width * height.
+            _index = np.arange(B, dtype=np.uint32)
+            np.random.shuffle(_index)
         for i in range(0, B, self.hparams.chunk):
+            if _FLAG:
+                _rays = rays[_index[i:i+self.hparams.chunk]]
+            else:
+                _rays = rays[i:i+self.hparams.chunk]
             rendered_ray_chunks = \
                 render_rays(self.models,
                             self.embeddings,
-                            rays[i:i+self.hparams.chunk],
+                            _rays,
                             self.hparams.N_samples,
                             self.hparams.use_disp,
                             self.hparams.perturb,
@@ -65,7 +75,12 @@ class NeRFSystem(LightningModule):
 
             for k, v in rendered_ray_chunks.items():
                 results[k] += [v]
-
+        if _FLAG:
+            _results = defaultdict(list)
+            for idx in np.arange(B, dtype=np.uint32): ## 0-504*378-1
+                for key in results.keys():
+                    _results[key] += results[key][_index.index(idx)]
+            results = _results
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
         return results
@@ -90,7 +105,6 @@ class NeRFSystem(LightningModule):
         ## because self.train_dataset already become the dict,
         # {image_number:[rays]} # already got the rgbs and rays.
         # {image_number:[rgbs]}
-
         return DataLoader(self.train_dataset,
                           shuffle=True,
                           num_workers=4,
@@ -105,7 +119,7 @@ class NeRFSystem(LightningModule):
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
     
-    def training_step(self, batch, batch_nb):
+    def training_step(self, batch, batch_nb): # batch determine be batch_size
         log = {'lr': get_learning_rate(self.optimizer)}
         rays, rgbs = self.decode_batch(batch)
         results = self(rays)
