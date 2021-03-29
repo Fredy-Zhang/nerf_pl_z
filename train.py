@@ -87,10 +87,20 @@ class NeRFSystem(LightningModule):
         return [self.optimizer], [scheduler]
 
     def train_dataloader(self):
+        ## because self.train_dataset already become the dict,
+        # {image_number:[rays]} # already got the rgbs and rays.
+        # {image_number:[rgbs]}
+        # img_wh = (504, 378), get the image size, using it to divide train_dataset into several image part.
+        _width, _height = self.hparams.img_wh
+        _num_images = int(len(self.train_dataset)/(_width*_height))
+        img_index = np.random.choice(_num_images) # 0,1,2,3...19
+        # 0 - 1023, 1024-2047, 2048-3081 choose the one image to do batch test.
+        self.train_dataset = self.train_dataset[0+img_index*(_width*_height):(_width*_height-1)+img_index*(_width*_height)]
         return DataLoader(self.train_dataset,
                           shuffle=True,
                           num_workers=4,
                           batch_size=self.hparams.batch_size,
+                          #batch_size=1, # every time only catch one images.
                           pin_memory=True)
 
     def val_dataloader(self):
