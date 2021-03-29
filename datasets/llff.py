@@ -218,9 +218,13 @@ class LLFFDataset(Dataset):
                                   # use first N_images-1 to train, the LAST is val
             self.all_rays = []
             self.all_rgbs = []
+            img_index = np.random.choice(len(self.image_paths))  ## only choose single image.
             for i, image_path in enumerate(self.image_paths):
                 if i == val_idx: # exclude the val image
                     continue
+                if i != img_index:
+                    continue
+
                 c2w = torch.FloatTensor(self.poses[i])
 
                 img = Image.open(image_path).convert('RGB')
