@@ -157,7 +157,7 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1):
+    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, batch_size=1024):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
@@ -168,6 +168,7 @@ class LLFFDataset(Dataset):
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
+        self.batch_size = batch_size
         self.define_transforms()
 
         self.read_meta()
@@ -253,8 +254,12 @@ class LLFFDataset(Dataset):
                                              far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 8)
                                  
-            self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
-            self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
+            self.all_rays = torch.cat(self.all_rays, 0) # ((1)*h*w, 8)
+            self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((1)*h*w, 3)
+            select_inds = np.random.choice(
+                self.all_rays.shape[0], size=[self.batch_size], replace=False)
+            self.all_rays = torch.gather(self.all_rays, select_inds)
+            self.all_rgbs = torch.gather(self.all_rgbs, select_inds)
         
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
