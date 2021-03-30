@@ -168,6 +168,7 @@ class LLFFDataset(Dataset):
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
+        #self.val_num = 0
         self.batch_size = batch_size
         self.define_transforms()
 
@@ -256,15 +257,11 @@ class LLFFDataset(Dataset):
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((1)*h*w, 3)
-            select_inds = np.random.choice(
-                self.all_rays.shape[0], size=[self.batch_size], replace=False)
-            self.all_rays = torch.gather(self.all_rays, select_inds)
-            self.all_rgbs = torch.gather(self.all_rgbs, select_inds)
-            ## or
-            # _index = np.arange(self.all_rays.shape[0], dtype=np.int32)
-            # np.random.shuffle(_index)
-            # self.all_rays = self.all_rays[_index[:self.batch_size]]
-            # self.all_rgbs = self.all_rgbs[_index[:self.batch_size]]
+
+            _index = np.arange(self.all_rays.shape[0], dtype=np.int32)
+            np.random.shuffle(_index)
+            self.all_rays = self.all_rays[_index[:self.batch_size]]
+            self.all_rgbs = self.all_rgbs[_index[:self.batch_size]]
         
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
