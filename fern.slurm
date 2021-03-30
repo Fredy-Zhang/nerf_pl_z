@@ -15,7 +15,7 @@
 #SBATCH --partition=gpgpu
 #SBATCH -q gpgpuresplat
 #SBATCH --nodes=1                   # set the node number
-#SBATCH --time=0-12:00:00           # set the running time
+#SBATCH --time=0-24:00:00           # set the running time
 #SBATCH --cpus-per-task=8
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:4
@@ -46,7 +46,7 @@ python train.py \
    --dataset_name llff \
    --root_dir "../../../dataset/nerf_llff_data/fern" \
    --N_importance 64 --img_wh "504" "378" \
-   --num_epochs "1000" --batch_size 4096 \
+   --num_epochs "50" --batch_size 4096 \
    --optimizer adam --lr 5e-4 \
    --lr_scheduler cosine \
    --exp_name "fern_case" \

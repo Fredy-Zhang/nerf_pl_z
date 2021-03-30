@@ -157,7 +157,7 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1):
+    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, batch_size=1024):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
@@ -168,6 +168,7 @@ class LLFFDataset(Dataset):
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
+        self.batch_size = batch_size
         self.define_transforms()
 
         self.read_meta()
@@ -218,11 +219,10 @@ class LLFFDataset(Dataset):
                                   # use first N_images-1 to train, the LAST is val
             self.all_rays = []
             self.all_rgbs = []
-            img_index = np.random.choice(len(self.image_paths))  ## only choose single image.
+            idx = 0
+            np.random.shuffle(self.image_paths)  # random shuffle images
             for i, image_path in enumerate(self.image_paths):
                 if i == val_idx: # exclude the val image
-                    continue
-                if i != img_index:
                     continue
 
                 c2w = torch.FloatTensor(self.poses[i])
@@ -252,7 +252,16 @@ class LLFFDataset(Dataset):
                                              near*torch.ones_like(rays_o[:, :1]),
                                              far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 8)
-                                 
+											 
+			    ## shuffle the single image rays and rgbs, then connect all images,
+				## Then, Dataloader not shuffle.
+                _index = np.arange(self.all_rays[idx].shape[0], dtype=np.int32)
+                np.random.shuffle(_index)
+                length = int(self.all_rays[idx].shape[0] / self.batch_size) - 1
+                self.all_rays[idx] = self.all_rays[idx][_index[:self.batch_size*length]]
+                self.all_rgbs[idx] = self.all_rgbs[idx][_index[:self.batch_size*length]]
+                idx += 1
+
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
         

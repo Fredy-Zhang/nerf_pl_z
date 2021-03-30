@@ -91,7 +91,8 @@ class NeRFSystem(LightningModule):
     def prepare_data(self):
         dataset = dataset_dict[self.hparams.dataset_name]
         kwargs = {'root_dir': self.hparams.root_dir,
-                  'img_wh': tuple(self.hparams.img_wh)}
+                  'img_wh': tuple(self.hparams.img_wh),
+                  'batch_size': self.hparams.batch_size}
         if self.hparams.dataset_name == 'llff':
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
@@ -109,11 +110,12 @@ class NeRFSystem(LightningModule):
         # {image_number:[rays]} # already got the rgbs and rays.
         # {image_number:[rgbs]}
         return DataLoader(self.train_dataset,
-                          shuffle=True,
+                          shuffle=False,
                           num_workers=4,
                           batch_size=self.hparams.batch_size,
                           #batch_size=1, # every time only catch one images.
-                          pin_memory=True)
+                          pin_memory=True,
+                          drop_last=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset,

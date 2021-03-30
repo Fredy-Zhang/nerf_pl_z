@@ -54,14 +54,14 @@ echo "Starting the process--------------------------------------"
 #   --chunk 2048
 
 python eval.py \
-   --root_dir "../../../../dataset/nerf_llff_data/fern" \
+   --root_dir "../../../dataset/nerf_llff_data/fern" \
    --dataset_name llff \
-   --scene_name "fern_case0" \
+   --scene_name "fern_case" \
    --img_wh "504" "378" \
    --N_importance 64 \
-   --ckpt_path "./ckpts/fern_case0/epoch=29.ckpt" \
+   --ckpt_path "./ckpts/fern_case/epoch=8.ckpt" \
    --split "test" \
    --N_samples 64 \
-   --chunk 2048
+   --chunk 4096
 
 echo "Finishing the training-------------------------------------"

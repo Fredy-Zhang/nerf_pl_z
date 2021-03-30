@@ -205,8 +205,8 @@ def render_rays(models,
     N_rays = rays.shape[0]
     rays_o, rays_d = rays[:, 0:3], rays[:, 3:6] # both (N_rays, 3)
     near, far = rays[:, 6:7], rays[:, 7:8] # both (N_rays, 1)
-
-    adj = design_adj_matrix(rays_o, 0.5)  # the threshold need to optimize.
+    import math
+    adj = design_adj_matrix(rays_o, 1/math.sqrt(24))  # the threshold need to optimize.
     co_adj = adj_normalized(adj)  ## fixed
 
     # Embed direction
