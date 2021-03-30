@@ -260,6 +260,11 @@ class LLFFDataset(Dataset):
                 self.all_rays.shape[0], size=[self.batch_size], replace=False)
             self.all_rays = torch.gather(self.all_rays, select_inds)
             self.all_rgbs = torch.gather(self.all_rgbs, select_inds)
+            ## or
+            # _index = np.arange(self.all_rays.shape[0], dtype=np.int32)
+            # np.random.shuffle(_index)
+            # self.all_rays = self.all_rays[_index[:self.batch_size]]
+            # self.all_rgbs = self.all_rgbs[_index[:self.batch_size]]
         
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
