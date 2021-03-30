@@ -65,7 +65,7 @@ def batched_inference(models, embeddings,
     #chunk = 1024*32
     chunk = chunk
     results = defaultdict(list)
-    index = None
+    _index = None
     _FLAG = B == (w * h)
     if _FLAG:
         # val part only val B will reach width * height.
@@ -95,14 +95,11 @@ def batched_inference(models, embeddings,
         for k, v in rendered_ray_chunks.items():
             results[k] += [v]
 
-    _results = defaultdict(list)
     for k, v in results.items():
         results[k] = torch.cat(v, 0)
-    if _FLAG:
-        for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
-            for k in results.keys():
-                _results[k] += results[k][list(_index).index(idx)]
-        results = _results
+        if _FLAG:
+            results[k] = torch.tensor(list(map(lambda x: x[1].tolist(), sorted(zip(_index, results[k]),
+                                                                           key=lambda t: t[0])))).cuda()
     return results
 
 

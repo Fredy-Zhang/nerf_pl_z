@@ -53,7 +53,7 @@ class NeRFSystem(LightningModule):
         """Do batched inference on rays using chunk."""
         B = rays.shape[0]
         results = defaultdict(list)
-        index = None
+        _index = None
         _FLAG = B == (self.hparams.img_wh[0] * self.hparams.img_wh[1])
         if _FLAG:
             # val part only val B will reach width * height.
@@ -81,11 +81,13 @@ class NeRFSystem(LightningModule):
 
             for k, v in rendered_ray_chunks.items():
                 results[k] += [v]
-        _results = defaultdict(list)
+
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
             if _FLAG:
-                results[k] = self.re_arange_tensor(results[k], B, _index)
+                ## build the tuple
+                results[k] = torch.tensor(list(map(lambda x:x[1].tolist(), sorted(zip(_index, results[k]),
+                                                                     key=lambda t:t[0])))).cuda()
         return results
 
     def prepare_data(self):
@@ -168,22 +170,6 @@ class NeRFSystem(LightningModule):
                 'log': {'val/loss': mean_loss,
                         'val/psnr': mean_psnr}
                }
-
-    @jit(nopython=True)
-    def re_arange_tensor(self, results, B, _index):
-        _results = []
-        for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
-            _results.append(results[list(_index).index(idx)])
-        return torch.tensor(_results)
-
-# position = list(_index).index(idx)
-# _results['rgb_coarse'].append(results['rgb_coarse'][position])
-# _results['depth_coarse'].append(results['depth_coarse'][position])
-# _results['opacity_coarse'].append(results['opacity_coarse'][position])
-# _results['rgb_fine'].append(results['rgb_fine'][position])
-# _results['depth_fine'].append(results['depth_fine'][position])
-# _results['opacity_fine'].append(results['opacity_fine'][position])
-
 
 if __name__ == '__main__':
     hparams = get_opts()
