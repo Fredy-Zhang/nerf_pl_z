@@ -24,8 +24,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
-# speed up
-from numba import jit
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
@@ -196,7 +194,7 @@ if __name__ == '__main__':
                       progress_bar_refresh_rate=1,
                       gpus=hparams.num_gpus,
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
-                      num_sanity_val_steps=1,
+                      num_sanity_val_steps=0,
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
 

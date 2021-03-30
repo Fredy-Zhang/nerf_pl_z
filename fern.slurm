@@ -11,7 +11,7 @@
 #   Config the Slurm                                #
 #   Set partition, cpu, GPU....                     #
 #---------------------------------------------------#
-#SBATCH --job-name="gpu_nerf_case0"
+#SBATCH --job-name="gpu_nerf"
 #SBATCH --partition=gpgpu
 #SBATCH -q gpgpuresplat
 #SBATCH --nodes=1                   # set the node number
@@ -44,13 +44,13 @@ echo "Starting the process--------------------------------------"
 
 python train.py \
    --dataset_name llff \
-   --root_dir "../../../../dataset/nerf_llff_data/fern" \
+   --root_dir "../../../dataset/nerf_llff_data/fern" \
    --N_importance 64 --img_wh "504" "378" \
-   --num_epochs "10" --batch_size 1024 \
+   --num_epochs "1000" --batch_size 4096 \
    --optimizer adam --lr 5e-4 \
    --lr_scheduler cosine \
-   --exp_name "fern_case0" \
+   --exp_name "fern_case" \
    --num_gpus 4 \
-   --chunk 2048
+   --chunk 4096
 
 echo "Finishing the training-------------------------------------"
