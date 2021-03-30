@@ -24,6 +24,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
+# speed up
+from numba import jit
+
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
         super(NeRFSystem, self).__init__()
@@ -81,11 +84,8 @@ class NeRFSystem(LightningModule):
         _results = defaultdict(list)
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
-        if _FLAG:
-            for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
-                for k in results.keys():
-                    _results[k] += results[k][list(_index).index(idx)]
-            results = _results
+            if _FLAG:
+                results[k] = self.re_arange_tensor(results[k], B, _index)
         return results
 
     def prepare_data(self):
@@ -168,6 +168,21 @@ class NeRFSystem(LightningModule):
                 'log': {'val/loss': mean_loss,
                         'val/psnr': mean_psnr}
                }
+
+    @jit(nopython=True)
+    def re_arange_tensor(self, results, B, _index):
+        _results = []
+        for idx in np.arange(B, dtype=np.int32):  ## 0-504*378-1
+            _results.append(results[list(_index).index(idx)])
+        return torch.tensor(_results)
+
+# position = list(_index).index(idx)
+# _results['rgb_coarse'].append(results['rgb_coarse'][position])
+# _results['depth_coarse'].append(results['depth_coarse'][position])
+# _results['opacity_coarse'].append(results['opacity_coarse'][position])
+# _results['rgb_fine'].append(results['rgb_fine'][position])
+# _results['depth_fine'].append(results['depth_fine'][position])
+# _results['opacity_fine'].append(results['opacity_fine'][position])
 
 
 if __name__ == '__main__':
