@@ -192,7 +192,7 @@ if __name__ == "__main__":
         far = dataset.bounds.max() * torch.ones_like(rays_d[:, :1])
         rays_o = torch.FloatTensor(vertices_) - rays_d * near * args.near_t
 
-        nerf_coarse = NeRF()
+        nerf_coarse = NeRF_Coarse()
         load_ckpt(nerf_coarse, args.ckpt_path, model_name='nerf_coarse')
         nerf_coarse.cuda().eval()
 

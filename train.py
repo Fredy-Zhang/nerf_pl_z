@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from datasets import dataset_dict
 
 # models
-from models.nerf import Embedding, NeRF
+from models.nerf import Embedding, NeRF, NeRF_Coarse
 from models.rendering import render_rays
 
 # optimizer, scheduler, visualization
@@ -38,7 +38,7 @@ class NeRFSystem(LightningModule):
         self.embedding_dir = Embedding(3, 4) # 4 is the default number
         self.embeddings = [self.embedding_xyz, self.embedding_dir]
 
-        self.nerf_coarse = NeRF()
+        self.nerf_coarse = NeRF_Coarse()
         self.models = [self.nerf_coarse]
         if hparams.N_importance > 0:
             self.nerf_fine = NeRF()
