@@ -36,7 +36,8 @@ class NeRFSystem(LightningModule):
         self.embedding_dir = Embedding(3, 4) # 4 is the default number
         self.embeddings = [self.embedding_xyz, self.embedding_dir]
 
-        self.nerf_coarse = NeRF_Coarse()
+        #self.nerf_coarse = NeRF_Coarse()
+        self.nerf_coarse = NeRF()
         self.models = [self.nerf_coarse]
         if hparams.N_importance > 0:
             self.nerf_fine = NeRF()
@@ -52,6 +53,7 @@ class NeRFSystem(LightningModule):
         B = rays.shape[0]
         results = defaultdict(list)
         _index = None
+        _FLAG = False
         _FLAG = B == (self.hparams.img_wh[0] * self.hparams.img_wh[1])
         if _FLAG:
             # val part only val B will reach width * height.
@@ -114,8 +116,7 @@ class NeRFSystem(LightningModule):
                           num_workers=4,
                           batch_size=self.hparams.batch_size,
                           #batch_size=1, # every time only catch one images.
-                          pin_memory=True,
-                          drop_last=True)
+                          pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset,
@@ -196,7 +197,7 @@ if __name__ == '__main__':
                       progress_bar_refresh_rate=1,
                       gpus=hparams.num_gpus,
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
-                      num_sanity_val_steps=0,
+                      num_sanity_val_steps=1,
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
 

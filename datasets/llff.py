@@ -220,10 +220,12 @@ class LLFFDataset(Dataset):
             self.all_rays = []
             self.all_rgbs = []
             idx = 0
-            np.random.shuffle(self.image_paths)  # random shuffle images
-            for i, image_path in enumerate(self.image_paths):
-                if i == val_idx: # exclude the val image
-                    continue
+            # exclude the val image
+            img_paths = self.image_paths[:val_idx] + self.image_paths[val_idx+1:]
+            np.random.shuffle(img_paths)
+            for i, image_path in enumerate(img_paths):
+                # if i == val_idx: # exclude the val image
+                #     continue
 
                 c2w = torch.FloatTensor(self.poses[i])
 
@@ -255,15 +257,14 @@ class LLFFDataset(Dataset):
 											 
 			    ## shuffle the single image rays and rgbs, then connect all images,
 				## Then, Dataloader not shuffle.
-                _index = np.arange(self.all_rays[idx].shape[0], dtype=np.int32)
+                _index = np.arange(self.all_rays[i].shape[0], dtype=np.int32)
                 np.random.shuffle(_index)
-                length = int(self.all_rays[idx].shape[0] / self.batch_size) - 1
-                self.all_rays[idx] = self.all_rays[idx][_index[:self.batch_size*length]]
-                self.all_rgbs[idx] = self.all_rgbs[idx][_index[:self.batch_size*length]]
-                idx += 1
+                length = int(self.all_rays[i].shape[0] / self.batch_size) - 1
+                self.all_rays[i] = self.all_rays[i][_index[:self.batch_size*length]]
+                self.all_rgbs[i] = self.all_rgbs[i][_index[:self.batch_size*length]]
 
-            self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
-            self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
+            self.all_rays = torch.cat(self.all_rays, 0) # ((1)*h*w, 8)
+            self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((1)*h*w, 3)
         
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
