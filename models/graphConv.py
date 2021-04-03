@@ -16,6 +16,7 @@ import logging
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 
+import numpy as np
 
 class GraphConvolution(Module):
     """
@@ -69,9 +70,22 @@ def design_adj_matrix(rays_o, threshold):
     x = torch.ones(dim, dim).cuda()
 
     # generate the distance matrix, (dim, dim), return A + I it's a bug.
-    adj = torch.where(torch.cdist(rays_o, rays_o, p=2) <= threshold, x, y) + torch.eye(dim).cuda()
-    logging.info(sum(adj,1))
+    adj = torch.where(torch.cdist(rays_o, rays_o, p=2) <= threshold, x, y)
+#    logging.info(sum(adj,1))
     return adj
+
+def normalize(mx): # all column will be 1.0
+    """Row-normalize sparse matrix"""
+    import scipy.sparse as sp
+    mx = mx.cpu()
+    rowsum = np.array(mx.sum(1))
+    r_inv = np.power(rowsum, -1).flatten()
+    r_inv[np.isinf(r_inv)] = 0.
+    r_mat_inv = sp.diags(r_inv)
+    mx = r_mat_inv.dot(mx)
+    mx = torch.tensor(mx).cuda()
+    return mx
+
 
 def adj_normalized(adj):
     """
@@ -83,8 +97,9 @@ def adj_normalized(adj):
     Output:
        co-adj: (N_rays, N_rays)
     """
-    degree = torch.diag(torch.sum(adj, 1) ** (-1/2))  # return the degree of every nodes
-    return degree @ adj @ degree  # return the adj, after normalized.
+    #degree = torch.diag(torch.sum(adj, 1) ** (-1/2))  # return the degree of every nodes
+    #return degree @ adj @ degree  # return the adj, after normalized.
+    return normalize(adj)
 
 ## if we assume, all points all can be considered as centeroids, this step can be ignored.
 def farthest_point_sample(xyz, npoint):
