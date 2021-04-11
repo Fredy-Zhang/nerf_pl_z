@@ -208,6 +208,7 @@ class NeRF(nn.Module):
             return sigma
 
         xyz_ = F.relu(self.gcn(xyz_, adj))
+
         xyz_encoding_final = self.xyz_encoding_final(xyz_)
         ## changes, xyz_encoding : torch.Size([32768, 256])
 

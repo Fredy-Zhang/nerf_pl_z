@@ -157,7 +157,7 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1):
+    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, batch_size=1024):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
@@ -166,6 +166,7 @@ class LLFFDataset(Dataset):
         self.root_dir = root_dir
         self.split = split
         self.img_wh = img_wh
+        self.batch_size = batch_size
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
         self.define_transforms()
@@ -213,45 +214,69 @@ class LLFFDataset(Dataset):
         # ray directions for all pixels, same for all images (same H, W, focal)
         self.directions = \
             get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal) # (H, W, 3)
-            
+
         if self.split == 'train': # create buffer of all rays and rgb data
                                   # use first N_images-1 to train, the LAST is val
             self.all_rays = []
             self.all_rgbs = []
-            img_index = np.random.choice(len(self.image_paths))  ## only choose single image.
-            for i, image_path in enumerate(self.image_paths):
-                if i == val_idx: # exclude the val image
-                    continue
-                if i != img_index:
-                    continue
+            rays_dict = {}
+            rgbs_dict = {}
+            img_paths = self.image_paths[:val_idx] + self.image_paths[val_idx+1:]
+            img_paths = np.array(list(img_paths) * 80)  ## include the val image.
+            np.random.shuffle(img_paths)
+            for i, image_path in enumerate(img_paths):
+                #if i == val_idx: # exclude the val image
+                #    continue
+                ## find the idx of this image 
+                if image_path not in rays_dict.keys():
+                    idx = list(self.image_paths).index(image_path)
+                    c2w = torch.FloatTensor(self.poses[idx])
 
-                c2w = torch.FloatTensor(self.poses[i])
-
-                img = Image.open(image_path).convert('RGB')
-                assert img.size[1]*self.img_wh[0] == img.size[0]*self.img_wh[1], \
-                    f'''{image_path} has different aspect ratio than img_wh, 
-                        please check your data!'''
-                img = img.resize(self.img_wh, Image.LANCZOS)
-                img = self.transform(img) # (3, h, w)
-                img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
-                self.all_rgbs += [img]
+                    img = Image.open(image_path).convert('RGB')
+                    assert img.size[1]*self.img_wh[0] == img.size[0]*self.img_wh[1], \
+                        f'''{image_path} has different aspect ratio than img_wh, 
+                            please check your data!'''
+                    img = img.resize(self.img_wh, Image.LANCZOS)
+                    img = self.transform(img) # (3, h, w)
+                    img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
+                    self.all_rgbs += [img]
+                    ### ---> ---<
+                    rgbs_dict[image_path] = img
                 
-                rays_o, rays_d = get_rays(self.directions, c2w) # both (h*w, 3)
-                if not self.spheric_poses:
-                    near, far = 0, 1
-                    rays_o, rays_d = get_ndc_rays(self.img_wh[1], self.img_wh[0],
+                    rays_o, rays_d = get_rays(self.directions, c2w) # both (h*w, 3)
+                    if not self.spheric_poses:
+                        near, far = 0, 1
+                        rays_o, rays_d = get_ndc_rays(self.img_wh[1], self.img_wh[0],
                                                   self.focal, 1.0, rays_o, rays_d)
                                      # near plane is always at 1.0
                                      # near and far in NDC are always 0 and 1
                                      # See https://github.com/bmild/nerf/issues/34
-                else:
-                    near = self.bounds.min()
-                    far = min(8 * near, self.bounds.max()) # focus on central object only
+                    else:
+                        near = self.bounds.min()
+                        far = min(8 * near, self.bounds.max()) # focus on central object only
 
-                self.all_rays += [torch.cat([rays_o, rays_d,
+                    self.all_rays += [torch.cat([rays_o, rays_d, 
                                              near*torch.ones_like(rays_o[:, :1]),
                                              far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 8)
+                    ## -->
+                    rays_dict[image_path] = torch.cat([rays_o, rays_d,
+                                             near*torch.ones_like(rays_o[:, :1]),
+                                             far*torch.ones_like(rays_o[:, :1])],
+                                             1)
+
+                    _index = np.arange(self.all_rays[i].shape[0], dtype=np.int32)
+                    np.random.shuffle(_index)
+                    
+                    self.all_rays[i] = self.all_rays[i][_index[:self.batch_size]]
+                    self.all_rgbs[i] = self.all_rgbs[i][_index[:self.batch_size]]
+                else:
+                    _index = np.arange(rays_dict[image_path].shape[0], dtype=np.int32)
+                    np.random.shuffle(_index)
+
+                    self.all_rays += [rays_dict[image_path][_index[:self.batch_size]]]
+                    self.all_rgbs += [rgbs_dict[image_path][_index[:self.batch_size]]]
+
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
@@ -279,7 +304,6 @@ class LLFFDataset(Dataset):
 
     def __len__(self):
         if self.split == 'train':
-            #return len(self.all_rays)
             return len(self.all_rays)
         if self.split == 'val':
             return self.val_num

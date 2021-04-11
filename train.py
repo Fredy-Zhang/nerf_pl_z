@@ -24,6 +24,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
+np.random.seed(2312)
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
@@ -95,6 +96,7 @@ class NeRFSystem(LightningModule):
         if self.hparams.dataset_name == 'llff':
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
+            kwargs["batch_size"] = self.hparams.batch_size
         self.train_dataset = dataset(split='train', **kwargs)
         self.val_dataset = dataset(split='val', **kwargs)
 
@@ -105,14 +107,10 @@ class NeRFSystem(LightningModule):
         return [self.optimizer], [scheduler]
 
     def train_dataloader(self):
-        ## because self.train_dataset already become the dict,
-        # {image_number:[rays]} # already got the rgbs and rays.
-        # {image_number:[rgbs]}
         return DataLoader(self.train_dataset,
-                          shuffle=True,
+                          shuffle=False,
                           num_workers=4,
                           batch_size=self.hparams.batch_size,
-                          #batch_size=1, # every time only catch one images.
                           pin_memory=True)
 
     def val_dataloader(self):
@@ -122,7 +120,7 @@ class NeRFSystem(LightningModule):
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
     
-    def training_step(self, batch, batch_nb): # batch determine be batch_size
+    def training_step(self, batch, batch_nb):
         log = {'lr': get_learning_rate(self.optimizer)}
         rays, rgbs = self.decode_batch(batch)
         results = self(rays)
@@ -135,8 +133,10 @@ class NeRFSystem(LightningModule):
 
         return {'loss': loss,
                 'progress_bar': {'train_psnr': psnr_},
-                'log': log
+                'log': log,
+                'loss_psnr': psnr_
                }
+
 
     def validation_step(self, batch, batch_nb):
         rays, rgbs = self.decode_batch(batch)
@@ -145,7 +145,7 @@ class NeRFSystem(LightningModule):
         results = self(rays)
         log = {'val_loss': self.loss(results, rgbs)}
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
-    
+   
         if batch_nb == 0:
             W, H = self.hparams.img_wh
             img = results[f'rgb_{typ}'].view(H, W, 3).cpu()
@@ -169,6 +169,7 @@ class NeRFSystem(LightningModule):
                         'val/psnr': mean_psnr}
                }
 
+
 if __name__ == '__main__':
     hparams = get_opts()
     system = NeRFSystem(hparams)
@@ -176,7 +177,9 @@ if __name__ == '__main__':
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',
-                                          save_top_k=5,)
+                                          save_top_k=20,
+                                          
+                                          )
 
     logger = TestTubeLogger(
         save_dir="logs",
@@ -194,7 +197,7 @@ if __name__ == '__main__':
                       progress_bar_refresh_rate=1,
                       gpus=hparams.num_gpus,
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
-                      num_sanity_val_steps=0,
+                      num_sanity_val_steps=1,
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
 
