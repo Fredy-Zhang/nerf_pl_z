@@ -222,7 +222,7 @@ class LLFFDataset(Dataset):
             rays_dict = {}
             rgbs_dict = {}
             img_paths = self.image_paths[:val_idx] + self.image_paths[val_idx+1:]
-            img_paths = np.array(list(img_paths) * 80)  ## include the val image.
+            img_paths = np.array(list(img_paths) * 10)  ## include the val image.
             np.random.shuffle(img_paths)
             for i, image_path in enumerate(img_paths):
                 #if i == val_idx: # exclude the val image
