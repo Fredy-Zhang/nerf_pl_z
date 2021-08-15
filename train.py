@@ -24,8 +24,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
-np.random.seed(2312)
-
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
         super(NeRFSystem, self).__init__()
@@ -130,7 +128,7 @@ class NeRFSystem(LightningModule):
         with torch.no_grad():
             psnr_ = psnr(results[f'rgb_{typ}'], rgbs)
             log['train/psnr'] = psnr_
-
+        
         return {'loss': loss,
                 'progress_bar': {'train_psnr': psnr_},
                 'log': log,
@@ -157,6 +155,7 @@ class NeRFSystem(LightningModule):
                                                stack, self.global_step)
 
         log['val_psnr'] = psnr(results[f'rgb_{typ}'], rgbs)
+        
         return log
 
     def validation_epoch_end(self, outputs):
@@ -172,13 +171,14 @@ class NeRFSystem(LightningModule):
 
 if __name__ == '__main__':
     hparams = get_opts()
+    
     system = NeRFSystem(hparams)
     checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',
-                                          save_top_k=20,
-                                          
+                                          save_top_k=10,
+                                     
                                           )
 
     logger = TestTubeLogger(

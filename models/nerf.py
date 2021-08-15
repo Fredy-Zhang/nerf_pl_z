@@ -119,8 +119,6 @@ class NeRF_Coarse(nn.Module):
         xyz_encoding_final = self.xyz_encoding_final(xyz_)
         ## changes, xyz_encoding : torch.Size([32768, 256])
 
-
-        ### <<<< need changes.
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir], -1)
         dir_encoding = self.dir_encoding(dir_encoding_input)
         rgb = self.rgb(dir_encoding)
@@ -196,9 +194,12 @@ class NeRF(nn.Module):
                 torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
         else:
             input_xyz = x
-
+ 
         xyz_ = input_xyz
         for i in range(self.D):
+            if i in [7]:
+                xyz_ = F.relu(self.gcn(xyz_, adj))
+                xyz_ = F.relu(self.gcn(xyz_, adj))
             if i in self.skips:
                 xyz_ = torch.cat([input_xyz, xyz_], -1)
             xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
@@ -207,13 +208,9 @@ class NeRF(nn.Module):
         if sigma_only:
             return sigma
 
-        xyz_ = F.relu(self.gcn(xyz_, adj))
-
         xyz_encoding_final = self.xyz_encoding_final(xyz_)
         ## changes, xyz_encoding : torch.Size([32768, 256])
 
-
-        ### <<<< need changes.
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir], -1)
         dir_encoding = self.dir_encoding(dir_encoding_input)
         rgb = self.rgb(dir_encoding)

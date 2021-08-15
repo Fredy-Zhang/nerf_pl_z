@@ -71,7 +71,7 @@ def design_adj_matrix(rays_o, threshold):
 
     # generate the distance matrix, (dim, dim), return A + I it's a bug.
     adj = torch.where(torch.cdist(rays_o, rays_o, p=2) <= threshold, x, y)
-#    logging.info(sum(adj,1))
+    #logging.info(sum(adj,1))
     return adj
 
 def normalize(mx): # all column will be 1.0

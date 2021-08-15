@@ -221,9 +221,14 @@ class LLFFDataset(Dataset):
             self.all_rgbs = []
             rays_dict = {}
             rgbs_dict = {}
+            #import pdb
+
+            #pdb.set_trace()
+
             img_paths = self.image_paths[:val_idx] + self.image_paths[val_idx+1:]
-            img_paths = np.array(list(img_paths) * 10)  ## include the val image.
+            img_paths = np.array(list(img_paths) * 30)  ## include the val image.
             np.random.shuffle(img_paths)
+            #print(self.batch_size)
             for i, image_path in enumerate(img_paths):
                 #if i == val_idx: # exclude the val image
                 #    continue
@@ -267,16 +272,13 @@ class LLFFDataset(Dataset):
 
                     _index = np.arange(self.all_rays[i].shape[0], dtype=np.int32)
                     np.random.shuffle(_index)
-                    
                     self.all_rays[i] = self.all_rays[i][_index[:self.batch_size]]
                     self.all_rgbs[i] = self.all_rgbs[i][_index[:self.batch_size]]
                 else:
                     _index = np.arange(rays_dict[image_path].shape[0], dtype=np.int32)
                     np.random.shuffle(_index)
-
                     self.all_rays += [rays_dict[image_path][_index[:self.batch_size]]]
                     self.all_rgbs += [rgbs_dict[image_path][_index[:self.batch_size]]]
-
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
