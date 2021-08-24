@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from models.graphConv import GraphConvolution
+from models.gat import GraphAttentionLayer
 import torch.nn.functional as F
 
 class Embedding(nn.Module):
@@ -145,20 +146,25 @@ class NeRF(nn.Module):
         self.in_channels_xyz = in_channels_xyz
         self.in_channels_dir = in_channels_dir
         self.skips = skips
+        self.dropout = 0.6
+
+        dropout, alpha, nheads = self.dropout, 0.2, 8
 
         # xyz encoding layers
+        self.attentions = [GraphAttentionLayer(self.W, self.W, dropout=dropout, alpha=alpha, concat=True) for _ in range(nheads)]
+        for i, attention in enumerate(self.attentions):
+            self.add_module('attention_{}'.format(i), attention)
+
         for i in range(D):
             if i == 0:
                 layer = nn.Linear(in_channels_xyz, W)
-            elif i in skips:
+            if i in skips:
                 layer = nn.Linear(W+in_channels_xyz, W)
             else:
                 layer = nn.Linear(W, W)
             layer = nn.Sequential(layer, nn.ReLU(True))
             setattr(self, f"xyz_encoding_{i+1}", layer)
         self.xyz_encoding_final = nn.Linear(W, W)
-
-        self.gcn = GraphConvolution(W, W)
 
         # direction encoding layers
         self.dir_encoding = nn.Sequential(
@@ -196,13 +202,15 @@ class NeRF(nn.Module):
             input_xyz = x
  
         xyz_ = input_xyz
+
         for i in range(self.D):
-            if i in [7]:
-                xyz_ = F.relu(self.gcn(xyz_, adj))
-                xyz_ = F.relu(self.gcn(xyz_, adj))
             if i in self.skips:
                 xyz_ = torch.cat([input_xyz, xyz_], -1)
             xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
+            if i in [6]:
+                xyz_ = F.dropout(xyz_, self.dropout, training=self.training)
+                xyz_ = torch.cat([att(xyz_, adj) for att in self.attentions], dim=1)
+                xyz_ = F.dropout(xyz_, self.dropout, training=self.training)
 
         sigma = self.sigma(xyz_)
         if sigma_only:

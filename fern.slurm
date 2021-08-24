@@ -47,10 +47,10 @@ python train.py \
    --dataset_name llff \
    --root_dir "/data/gpfs/projects/punim1006/zzk/dataset/nerf_llff_data/fern" \
    --N_importance 64 --img_wh "504" "378" \
-   --num_epochs "1000" --batch_size 3024 \
+   --num_epochs "10000" --batch_size 3024 \
    --optimizer adam --lr 5e-4 \
    --lr_scheduler cosine \
-   --exp_name "fern_case" \
+   --exp_name "fern" \
    --num_gpus 4 \
    --chunk 3024
 

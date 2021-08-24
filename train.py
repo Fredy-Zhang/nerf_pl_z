@@ -177,7 +177,7 @@ if __name__ == '__main__':
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',
-                                          save_top_k=10,
+                                          save_top_k=3,
                                      
                                           )
 
