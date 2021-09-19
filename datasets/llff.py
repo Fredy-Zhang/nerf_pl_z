@@ -228,7 +228,7 @@ class LLFFDataset(Dataset):
             img_paths = self.image_paths[:val_idx] + self.image_paths[val_idx+1:]
             img_paths = np.array(list(img_paths) * 30)  ## include the val image.
             np.random.shuffle(img_paths)
-            #print(self.batch_size)
+            print(img_paths[:2])
             for i, image_path in enumerate(img_paths):
                 #if i == val_idx: # exclude the val image
                 #    continue

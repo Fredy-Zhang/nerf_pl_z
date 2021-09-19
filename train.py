@@ -105,6 +105,15 @@ class NeRFSystem(LightningModule):
         return [self.optimizer], [scheduler]
 
     def train_dataloader(self):
+        dataset = dataset_dict[self.hparams.dataset_name]
+        kwargs = {'root_dir': self.hparams.root_dir,
+                  'img_wh': tuple(self.hparams.img_wh)}
+        if self.hparams.dataset_name == 'llff':
+            kwargs['spheric_poses'] = self.hparams.spheric_poses
+            kwargs['val_num'] = self.hparams.num_gpus
+            kwargs["batch_size"] = self.hparams.batch_size
+        self.train_dataset = dataset(split='train', **kwargs)
+
         return DataLoader(self.train_dataset,
                           shuffle=False,
                           num_workers=4,
@@ -199,6 +208,7 @@ if __name__ == '__main__':
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
                       num_sanity_val_steps=1,
                       benchmark=True,
-                      profiler=hparams.num_gpus==1)
+                      profiler=hparams.num_gpus==1,
+                      reload_dataloaders_every_epoch=True)
 
     trainer.fit(system)
